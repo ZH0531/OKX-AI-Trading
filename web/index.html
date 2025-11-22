@@ -336,28 +336,6 @@
             border: 1px solid #fecaca;
         }
         
-        .refresh-btn {
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1em;
-            margin-top: 6px;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .refresh-btn:hover {
-            background: #1d4ed8;
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-        
-        .refresh-btn:active {
-            transform: scale(0.98);
-        }
-        
         .config-item {
             margin-bottom: 8px;
             font-size: 0.86rem;
@@ -549,10 +527,7 @@
                 </div>
 
                 <div class="card">
-                    <h2>
-                        <span>📋 历史交易记录</span>
-                        <button class="refresh-btn" onclick="loadAllData()">刷新数据</button>
-                    </h2>
+                    <h2>📋 历史交易记录</h2>
                     <div class="trades-scroll">
                         <div id="trades-content">
                             <div class="loading">加载中...</div>
@@ -754,12 +729,6 @@
                     </div>
                     <div class="config-item">
                         最大仓位百分比: <span class="config-value">${config.max_position_percent}%</span>
-                    </div>
-                    <div class="config-item">
-                        最大止损: <span class="config-value">${config.max_stop_loss}%</span>
-                    </div>
-                    <div class="config-item">
-                        最小止盈: <span class="config-value">${config.min_take_profit}%</span>
                     </div>
                     <div class="config-item">
                         检查方式: <span class="config-value">${config.check_mode}</span>
@@ -969,6 +938,16 @@
             ]);
         }
         
+        let refreshInterval = null;
+
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            refreshInterval = setInterval(loadAllData, 5000);
+            console.log('✓ 面板已启动，每5秒刷新一次');
+        }
+
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const token = document.getElementById('token-input').value.trim();
@@ -977,8 +956,9 @@
             try {
                 await loadAllData();
                 hideLogin();
-                setInterval(loadAllData, 5000);
-            } catch {
+                startAutoRefresh();
+            } catch (err) {
+                console.error('登录失败:', err);
             }
         });
 
@@ -987,14 +967,14 @@
             try {
                 await loadAllData();
                 hideLogin();
-                setInterval(loadAllData, 5000);
-                console.log('✓ 面板已启动，每5秒刷新一次');
+                startAutoRefresh();
             } catch (e) {
                 // 如果失败了，显示登录界面
                 if (!panelToken) {
                     showLogin('请输入面板访问密码');
                 } else {
-                    showLogin('密码错误，请重新输入');
+                    clearToken();
+                    showLogin('密码错误或已过期，请重新输入');
                 }
             }
         })();

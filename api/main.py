@@ -135,9 +135,7 @@ async def get_config():
             "symbol": Config.TRADING_SYMBOL,
             "max_trading_amount": Config.MAX_TRADING_AMOUNT,
             "max_position_percent": Config.MAX_POSITION_PERCENT,
-            "max_stop_loss": Config.MAX_STOP_LOSS_PERCENT,
-            "min_take_profit": Config.MIN_TAKE_PROFIT_PERCENT,
-            "check_mode": "K线对齐（15m K线结束前2分钟）",
+            "check_mode": "准点（每15分钟）",
             "simulated": Config.OKX_SIMULATED
         }
     }
