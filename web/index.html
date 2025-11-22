@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI炒币监控面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f172a, #111827 45%, #0b1020);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            z-index: 10;
+        }
+
+        .login-card {
+            width: min(420px, 100%);
+            background: rgba(255,255,255,0.98);
+            border-radius: 16px;
+            padding: 26px 24px 22px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+            border: 1px solid #e5e7eb;
+        }
+
+        .login-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+        }
+
+        .login-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .login-input {
+            flex: 1;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .login-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+
+        .login-button {
+            background: #111827;
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .login-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(17,24,39,0.18);
+        }
+
+        .login-alert {
+            color: #b91c1c;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 0.92rem;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh;
+            padding: 24px;
+            color: #1f2933;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            color: #111827;
+            margin-bottom: 20px;
+        }
+        
+        .header-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .header-title h1 {
+            font-size: 2rem;
+            margin-bottom: 6px;
+        }
+        
+        .header-title p {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+        
+        .auto-refresh-indicator {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .header-balance {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .header-balance-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 145px;
+            flex: 1 1 auto;
+        }
+        
+        .header-balance-item:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #d1d5db;
+        }
+        
+        .header-balance-label {
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        
+        .header-balance-value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        
+        .header-balance-value-price {
+            color: #3b82f6;
+        }
+        
+        .header-balance-value-btc {
+            color: #f59e0b;
+        }
+        
+        .header-balance-value-cost {
+            color: #8b5cf6;
+        }
+        
+        .header-balance-value-total {
+            color: #059669;
+            font-size: 1.25rem;
+        }
+        
+        /* 主布局：左右两栏（左窄右宽） */
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 0.32fr) minmax(0, 0.68fr);
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .left-column,
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 18px 20px 16px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+            transform: translateY(-3px);
+            border-color: #d1d5db;
+        }
+        
+        .card h2 {
+            font-size: 1rem;
+            color: #111827;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        
+        .status-time {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            background: #f9fafb;
+            border-radius: 6px;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.86rem;
+        }
+        
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #111827;
+        }
+        
+        .positive {
+            color: #dc2626;  /* 红色表示涨/盈利 - 中国习惯 */
+        }
+        
+        .negative {
+            color: #059669;  /* 绿色表示跌/亏损 - 中国习惯 */
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .table th,
+        .table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.85rem;
+        }
+        
+        .table td {
+            color: #4b5563;
+            font-size: 0.85rem;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        
+        .badge-buy {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .badge-sell {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        
+        .badge-hold {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 16px;
+            color: #6b7280;
+        }
+        
+        .error {
+            background: #fef2f2;
+            color: #b91c1c;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #fecaca;
+        }
+        
+        .refresh-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 6px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .refresh-btn:hover {
+            background: #1d4ed8;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .config-item {
+            margin-bottom: 8px;
+            font-size: 0.86rem;
+            color: #6b7280;
+        }
+        
+        .config-value {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        /* 右侧历史列表滚动区域 */
+        .trades-scroll {
+            max-height: 360px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+        
+        /* AI推理过程样式 - 简约风格 */
+        .reasoning-details {
+            margin-top: 12px;
+            padding: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .reasoning-details summary {
+            outline: none;
+            user-select: none;
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 0.85em;
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        
+        .reasoning-details summary:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .reasoning-details[open] summary {
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        
+        .reasoning-content {
+            padding: 12px;
+            font-size: 0.82em;
+            line-height: 1.6;
+            color: #4b5563;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .reasoning-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .reasoning-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .reasoning-content::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+        
+        .reasoning-content::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        
+        .reasoning-toggle-icon {
+            transition: transform 0.2s ease;
+            display: inline-block;
+            font-size: 0.7em;
+            color: #9ca3af;
+        }
+        
+        .reasoning-details[open] .reasoning-toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 0.36fr) minmax(0, 0.64fr);
+            gap: 10px;
+        }
+        
+        .status-left {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.86rem;
+        }
+        
+        .status-right {
+            font-size: 0.86rem;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        
+        .status-meta {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .header-main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-balance {
+                border-radius: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-title">访问验证</div>
+            <div class="login-subtitle">请输入面板访问口令（由后端环境变量 PANEL_TOKEN 设置）</div>
+            <form class="login-form" id="login-form">
+                <input type="password" id="token-input" class="login-input" placeholder="PANEL_TOKEN" autocomplete="off" required>
+                <button type="submit" class="login-button">进入</button>
+            </form>
+            <div id="login-alert" class="login-alert" style="display:none;"></div>
+        </div>
+    </div>
+
+    <div class="container" id="app-container" style="display:none;">
+    <div class="container">
+        <div class="header">
+            <div class="header-main">
+                <div class="header-title">
+                    <h1>OKX 监控面板</h1>
+                    <p>基于 AI 自动交易加密货币</p>
+                </div>
+                <div id="header-balance-summary" class="header-balance"></div>
+            </div>
+        </div>
+        
+        <div id="error-container"></div>
+        
+        <div class="layout">
+            <!-- 左侧：基础信息 -->
+            <div class="left-column">
+                <div class="card">
+                    <h2>📊 交易统计</h2>
+                    <div id="stats-content">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>⚙️ 系统配置</h2>
+                    <div id="config-content">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：最新分析 + 历史记录 -->
+            <div class="right-column">
+                <div class="card">
+                    <h2>
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            🔍 AI 最新分析
+                            <span class="auto-refresh-indicator" title="自动刷新中（5秒间隔）"></span>
+                        </span>
+                        <span id="status-time" class="status-time"></span>
+                    </h2>
+                    <div id="status-content">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>
+                        <span>📋 历史交易记录</span>
+                        <button class="refresh-btn" onclick="loadAllData()">刷新数据</button>
+                    </h2>
+                    <div class="trades-scroll">
+                        <div id="trades-content">
+                            <div class="loading">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+        <script>
+        const API_BASE = '';
+        const TOKEN_KEY = 'panel_token';
+        let panelToken = localStorage.getItem(TOKEN_KEY) || '';
+
+        function setAppVisible(visible) {
+            document.getElementById('app-container').style.display = visible ? 'block' : 'none';
+        }
+
+        function showLogin(message = '') {
+            const overlay = document.getElementById('login-overlay');
+            const alertBox = document.getElementById('login-alert');
+            overlay.style.display = 'flex';
+            setAppVisible(false);
+            if (message) {
+                alertBox.textContent = message;
+                alertBox.style.display = 'block';
+            } else {
+                alertBox.style.display = 'none';
+            }
+        }
+
+        function hideLogin() {
+            document.getElementById('login-overlay').style.display = 'none';
+            setAppVisible(true);
+        }
+
+        function saveToken(token) {
+            panelToken = token;
+            localStorage.setItem(TOKEN_KEY, token);
+        }
+
+        function clearToken() {
+            panelToken = '';
+            localStorage.removeItem(TOKEN_KEY);
+        }
+
+        async function authFetch(url, options = {}) {
+            const headers = Object.assign({}, options.headers || {});
+            if (panelToken) {
+                headers['X-Panel-Token'] = panelToken;
+            }
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                clearToken();
+                showLogin('会话已过期，请重新登录');
+                throw new Error('Unauthorized');
+            }
+            return response;
+        }
+        
+        async function loadBalance() {
+            try {
+                const response = await authFetch(`${API_BASE}/api/balance`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '获取数据失败');
+                }
+                
+                const balanceCard = document.getElementById('balance-content');
+                if (balanceCard) {
+                    balanceCard.innerHTML = '';
+                }
+
+                const pnlClass = data.unrealized_pnl >= 0 ? 'positive' : 'negative';
+                const hasCost = data.avg_cost > 0;
+                const btcDisplay = data.btc.toFixed(8);
+                
+                const headerHtml = `
+                    <div class="header-balance-item">
+                        <span class="header-balance-label">BTC现价 (USDT)</span>
+                        <span class="header-balance-value header-balance-value-price">${data.btc_price.toLocaleString()}</span>
+                    </div>
+                    <div class="header-balance-item">
+                        <span class="header-balance-label">BTC仓位</span>
+                        <span class="header-balance-value header-balance-value-btc">${btcDisplay}</span>
+                    </div>
+                    ${hasCost ? `
+                    <div class="header-balance-item">
+                        <span class="header-balance-label">平均成本 (USDT)</span>
+                        <span class="header-balance-value header-balance-value-cost">${data.avg_cost.toLocaleString()}</span>
+                    </div>
+                    <div class="header-balance-item">
+                        <span class="header-balance-label">浮动盈亏 (USD)</span>
+                        <span class="header-balance-value ${pnlClass}">${data.unrealized_pnl >= 0 ? '+' : ''}$${Math.abs(data.unrealized_pnl).toFixed(2)} <small style="opacity:0.8">(${data.unrealized_pnl_percent >= 0 ? '+' : ''}${data.unrealized_pnl_percent.toFixed(2)}%)</small></span>
+                    </div>
+                    ` : ''}
+                    <div class="header-balance-item">
+                        <span class="header-balance-label">USDT余额</span>
+                        <span class="header-balance-value">${data.usdt.toLocaleString()}</span>
+                    </div>
+                    <div class="header-balance-item">
+                        <span class="header-balance-label">总价值(USD)</span>
+                        <span class="header-balance-value header-balance-value-total">$${data.total_value.toLocaleString()}</span>
+                    </div>
+                `;
+
+                const headerBalance = document.getElementById('header-balance-summary');
+                if (headerBalance) {
+                    headerBalance.innerHTML = headerHtml;
+                }
+            } catch (error) {
+                showError('获取数据失败: ' + error.message);
+            }
+        }
+        
+        async function loadStatistics() {
+            try {
+                const response = await authFetch(`${API_BASE}/api/statistics`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '获取数据失败');
+                }
+                
+                const stats = data.statistics;
+                const winRate = stats.win_rate || 0;
+                const recentProfit = stats.recent_profit || 0;
+                
+                let performanceClass = 'positive';
+                let performanceText = '一般';
+                if (winRate < 40 || recentProfit < -50) {
+                    performanceClass = 'negative';
+                    performanceText = '较差';
+                } else if (winRate < 55) {
+                    performanceClass = '';
+                    performanceText = '良好';
+                }
+                
+                document.getElementById('stats-content').innerHTML = `
+                    <div class="stat">
+                        <span class="stat-label">总交易次数</span>
+                        <span class="stat-value">${stats.total_trades}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">买入次数</span>
+                        <span class="stat-value">${stats.buy_count}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">卖出次数</span>
+                        <span class="stat-value">${stats.sell_count}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">平均盈亏</span>
+                        <span class="stat-value ${stats.avg_profit >=0 ? 'positive' : 'negative'}">$${stats.avg_profit.toFixed(2)}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">总盈亏</span>
+                        <span class="stat-value ${stats.total_profit >=0 ? 'positive' : 'negative'}">$${stats.total_profit.toFixed(2)}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">最近表现</span>
+                        <span class="stat-value ${performanceClass}">${recentProfit >=0 ? '+' : ''}$${recentProfit.toFixed(2)} • ${winRate}% (${performanceText})</span>
+                    </div>
+                `;
+            } catch (error) {
+                showError('获取数据失败: ' + error.message);
+            }
+        }
+        
+        function formatToBeijingTime(ts) {
+            if (!ts) return '-';
+            try {
+                const d = new Date(ts);
+                const bj = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+                return bj.toLocaleString();
+            } catch (e) {
+                return ts;
+            }
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await authFetch(`${API_BASE}/api/config`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '获取数据失败');
+                }
+                
+                const config = data.config;
+                const html = `
+                    <div class="config-item">
+                        交易对: <span class="config-value">${config.symbol}</span>
+                    </div>
+                    <div class="config-item">
+                        最大交易数量: <span class="config-value">${config.max_trading_amount} BTC</span>
+                    </div>
+                    <div class="config-item">
+                        最大仓位百分比: <span class="config-value">${config.max_position_percent}%</span>
+                    </div>
+                    <div class="config-item">
+                        最大止损: <span class="config-value">${config.max_stop_loss}%</span>
+                    </div>
+                    <div class="config-item">
+                        最小止盈: <span class="config-value">${config.min_take_profit}%</span>
+                    </div>
+                    <div class="config-item">
+                        检查方式: <span class="config-value">${config.check_mode}</span>
+                    </div>
+                    <div class="config-item">
+                        模式: <span class="config-value">${config.simulated ? '模拟盘' : '实盘'}</span>
+                    </div>
+                `;
+                
+                document.getElementById('config-content').innerHTML = html;
+            } catch (error) {
+                showError('获取数据失败: ' + error.message);
+            }
+        }
+        
+        async function loadStatus() {
+            try {
+                const response = await authFetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '获取数据失败');
+                }
+                
+                const status = data.status;
+                
+                if (!status) {
+                    document.getElementById('status-content').innerHTML = '<p>暂无状态</p>';
+                    return;
+                }
+                
+                let action = '-';
+                let confidence = '-';
+                let risk = '-';
+                let reason = status.ai_suggestion || '无建议';
+                let positionType = '';
+                let amountText = '';
+                try {
+                    if (status.ai_suggestion && typeof status.ai_suggestion === 'string' && status.ai_suggestion.trim().startsWith('{')) {
+                        const ai = JSON.parse(status.ai_suggestion);
+                        action = ai.action || '-';
+                        confidence = ai.confidence !== undefined ? `${ai.confidence}%` : '-';
+                        risk = ai.risk_level || '-';
+                        reason = ai.reason || reason;
+                        positionType = ai.position_type || '';
+                        if (typeof ai.suggested_amount === 'number') {
+                            amountText = `${ai.suggested_amount.toFixed(6)} BTC`;
+                        }
+                    } else if (status.ai_suggestion) {
+                        const raw = status.ai_suggestion;
+                        const parts = raw.split('-');
+                        if (parts.length >= 2) {
+                            action = (parts[0] || '').trim() || action;
+                            reason = parts.slice(1).join('-').trim() || reason;
+                        } else {
+                            reason = raw.trim();
+                        }
+                    }
+                } catch (e) {
+                }
+
+                const timeEl = document.getElementById('status-time');
+                if (timeEl) {
+                    timeEl.textContent = formatToBeijingTime(status.timestamp);
+                }
+
+                const actionBadgeClass = action === 'BUY' ? 'badge-buy' : action === 'SELL' ? 'badge-sell' : 'badge-hold';
+                const reasoning = status.ai_reasoning || '';
+                const hasReasoning = reasoning && reasoning.trim().length > 0;
+                const wasOpen = localStorage.getItem('reasoning-open') === 'true';
+                const oldReasoningEl = document.querySelector('.reasoning-content');
+                const oldScrollTop = oldReasoningEl ? oldReasoningEl.scrollTop : 0;
+
+                const html = `
+                    <div class="status-grid">
+                        <div class="status-left">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span class="stat-label">决策:</span>
+                                <span class="badge ${actionBadgeClass}">${action}</span>
+                                ${amountText ? `<span class="status-meta">${amountText}</span>` : ''}
+                                ${positionType ? `<span class="status-meta">${positionType}</span>` : ''}
+                            </div>
+                            <div class="status-meta">
+                                信心度: <strong>${confidence}</strong> • 风险等级: <strong>${risk}</strong>
+                            </div>
+                        </div>
+                        <div class="status-right">
+                            <strong>AI 建议理由:</strong><br>
+                            ${reason}
+                        </div>
+                    </div>
+                    ${hasReasoning ? `
+                    <details class="reasoning-details" id="reasoning-details" ${wasOpen ? 'open' : ''}>
+                        <summary>
+                            <span>AI 推理过程</span>
+                            <span class="reasoning-toggle-icon">▼</span>
+                        </summary>
+                        <div class="reasoning-content">${reasoning}</div>
+                    </details>
+                    ` : ''}
+                `;
+                
+                document.getElementById('status-content').innerHTML = html;
+                
+                if (hasReasoning) {
+                    const detailsEl = document.getElementById('reasoning-details');
+                    if (detailsEl) {
+                        detailsEl.addEventListener('toggle', function() {
+                            localStorage.setItem('reasoning-open', this.open ? 'true' : 'false');
+                        });
+                        
+                        const reasoningContent = detailsEl.querySelector('.reasoning-content');
+                        if (reasoningContent && wasOpen) {
+                            const scrollToRestore = oldScrollTop || parseInt(localStorage.getItem('reasoning-scroll') || '0');
+                            if (scrollToRestore > 0) {
+                                setTimeout(() => {
+                                    reasoningContent.scrollTop = scrollToRestore;
+                                }, 0);
+                            }
+                            
+                            reasoningContent.addEventListener('scroll', function() {
+                                localStorage.setItem('reasoning-scroll', this.scrollTop);
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                showError('获取数据失败: ' + error.message);
+            }
+        }
+        
+        async function loadTrades() {
+            try {
+                const response = await authFetch(`${API_BASE}/api/trades?limit=10`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '获取交易记录失败');
+                }
+                
+                const trades = data.trades;
+                
+                if (trades.length === 0) {
+                    document.getElementById('trades-content').innerHTML = '<p style="text-align:center;padding:20px;color:#666;">暂无交易记录</p>';
+                    return;
+                }
+                
+                let html = `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>操作</th>
+                                <th>价格</th>
+                                <th>数量</th>
+                                <th>金额</th>
+                                <th>盈亏</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                trades.forEach(trade => {
+                    const actionClass = trade.action === 'BUY' ? 'badge-buy' : 'badge-sell';
+                    const profitClass = trade.profit >= 0 ? 'positive' : 'negative';
+                    const timestamp = formatToBeijingTime(trade.timestamp);
+                    const usdtAmount = (trade.price * trade.amount).toFixed(2);
+                    
+                    html += `
+                        <tr>
+                            <td>${timestamp}</td>
+                            <td><span class="badge ${actionClass}">${trade.action}</span></td>
+                            <td>$${trade.price.toLocaleString()}</td>
+                            <td>$${parseFloat(usdtAmount).toLocaleString()}</td>
+                            <td class="${profitClass}">$${trade.profit.toFixed(2)}</td>
+                            <td>${trade.reason || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+                
+                document.getElementById('trades-content').innerHTML = html;
+            } catch (error) {
+                showError('获取交易记录失败: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.innerHTML = `<div class="error">错误: ${message}</div>`;
+            setTimeout(() => {
+                errorContainer.innerHTML = '';
+            }, 5000);
+        }
+        
+        async function loadAllData() {
+            await Promise.all([
+                loadBalance(),
+                loadStatistics(),
+                loadConfig(),
+                loadStatus(),
+                loadTrades()
+            ]);
+        }
+        
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const token = document.getElementById('token-input').value.trim();
+            if (!token) return;
+            saveToken(token);
+            try {
+                await loadAllData();
+                hideLogin();
+                setInterval(loadAllData, 5000);
+            } catch {
+            }
+        });
+
+        (async () => {
+            // 先尝试加载数据，如果需要密码服务器会返回401
+            try {
+                await loadAllData();
+                hideLogin();
+                setInterval(loadAllData, 5000);
+                console.log('✓ 面板已启动，每5秒刷新一次');
+            } catch (e) {
+                // 如果失败了，显示登录界面
+                if (!panelToken) {
+                    showLogin('请输入面板访问密码');
+                } else {
+                    showLogin('密码错误，请重新输入');
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

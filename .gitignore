@@ -1,0 +1,65 @@
+# 环境变量和密钥
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 数据库和日志
+data/*.db
+data/*.db-journal
+logs/*.log
+*.sqlite
+*.sqlite3
+
+# 备份文件
+*.bak
+*.backup
+*.tmp
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Docker
+.dockerignore
+
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini

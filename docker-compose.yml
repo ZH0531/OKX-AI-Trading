@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 交易机器人
+  trading-bot:
+    build: .
+    container_name: ai-trading-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data  # 持久化SQLite数据库
+      - ./logs:/app/logs  # 持久化日志
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # 让容器能访问宿主机
+    networks:
+      - trading-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sqlite3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web监控面板
+  web-panel:
+    build: .
+    container_name: ai-trading-web
+    restart: unless-stopped
+    command: python api/main.py
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8000:8000"  # 映射到宿主机端口，方便反向代理
+    volumes:
+      - ./data:/app/data  # 共享SQLite数据库
+      - ./web:/app/web    # Web前端文件
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # 让容器能访问宿主机
+    networks:
+      - trading-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  trading-network:
+    driver: bridge
