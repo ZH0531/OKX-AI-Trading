@@ -884,8 +884,8 @@
                                 <th>操作</th>
                                 <th>价格</th>
                                 <th>数量</th>
-                                <th>金额</th>
                                 <th>盈亏</th>
+                                <th>理由</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -895,14 +895,13 @@
                     const actionClass = trade.action === 'BUY' ? 'badge-buy' : 'badge-sell';
                     const profitClass = trade.profit >= 0 ? 'positive' : 'negative';
                     const timestamp = formatToBeijingTime(trade.timestamp);
-                    const usdtAmount = (trade.price * trade.amount).toFixed(2);
                     
                     html += `
                         <tr>
                             <td>${timestamp}</td>
                             <td><span class="badge ${actionClass}">${trade.action}</span></td>
                             <td>$${trade.price.toLocaleString()}</td>
-                            <td>$${parseFloat(usdtAmount).toLocaleString()}</td>
+                            <td>${trade.amount.toFixed(8)} BTC</td>
                             <td class="${profitClass}">$${trade.profit.toFixed(2)}</td>
                             <td>${trade.reason || '-'}</td>
                         </tr>
